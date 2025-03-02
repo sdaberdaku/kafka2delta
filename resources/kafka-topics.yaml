@@ -1,0 +1,47 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: cdc
+  name: postgres-public-users
+  namespace: cdc
+spec:
+  config:
+    cleanup.policy: delete
+    compression.type: producer
+    retention.ms: 604800000
+  partitions: 1
+  replicas: 1
+  topicName: postgres.public.users
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: cdc
+  name: postgres-public-orders
+  namespace: cdc
+spec:
+  config:
+    cleanup.policy: delete
+    compression.type: producer
+    retention.ms: 604800000
+  partitions: 1
+  replicas: 1
+  topicName: postgres.public.orders
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: cdc
+  name: postgres-public-products
+  namespace: cdc
+spec:
+  config:
+    cleanup.policy: delete
+    compression.type: producer
+    retention.ms: 604800000
+  partitions: 1
+  replicas: 1
+  topicName: postgres.public.products

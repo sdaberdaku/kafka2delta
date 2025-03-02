@@ -1,0 +1,72 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: kafka
+  namespace: cdc
+  labels:
+    strimzi.io/cluster: cdc
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: true
+        kraftMetadata: shared
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc
+  namespace: cdc
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 3.7.1
+    metadataVersion: 3.7-IV4
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+        configuration:
+          useServiceDnsDomain: true
+    config:
+      # Nomen est omen
+      auto.create.topics.enable: false
+      # This config designates the retention policy to use on log segments. The "delete" policy (which is the default)
+      # will discard old segments when their retention time or size limit has been reached.
+      cleanup.policy: delete
+      # Specify the final compression type for a given topic.
+      # compression.type: zstd
+      # The default replication factors for automatically created topics.
+      default.replication.factor: 1
+      # Specifies the minimum number of replicas that must acknowledge a write so that it is considered successful.
+      min.insync.replicas: 1
+      # The default number of log partitions per topic.
+      num.partitions: 1
+      # The maximum time we will retain a log before we will discard old log segments to free up space if we are using
+      # the "delete" retention policy.
+      retention.ms: 604800000  # 7 days: 7 × 24 × 60 × 60 × 1000 = 604800000
+      # Idle connections timeout: the server socket processor threads close the connections that idle more than this.
+      connections.max.idle.ms: 3600000  # 1 hour: 1 × 60 × 60 × 1000 = 3600000
+      # Enable controlled shutdown of the server.
+      controlled.shutdown.enable: true
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+  entityOperator:
+    template:
+      topicOperatorContainer:
+        env:
+          - name: STRIMZI_MAX_QUEUE_SIZE
+            value: "5000"
+    topicOperator: {}

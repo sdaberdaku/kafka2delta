@@ -1,0 +1,11 @@
+boto3-stubs-lite[s3]~=1.37.1
+boto3~=1.37.4
+build~=1.2.1
+confluent-kafka~=2.5.0
+delta-spark~=3.2.0
+psycopg2-binary~=2.9.10
+pyspark==3.5.1
+pytest~=8.2.2
+requests~=2.32.3
+setuptools~=75.8.0
+wheel~=0.45.1

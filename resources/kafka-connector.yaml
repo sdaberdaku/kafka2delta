@@ -1,0 +1,50 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  labels:
+    strimzi.io/cluster: cdc
+  name: debezium-connector
+  namespace: cdc
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  config:
+    database.dbname: postgres
+    database.hostname: postgres-postgresql.postgres
+    database.password: postgres
+    database.port: 5432
+    database.user: postgres
+    decimal.handling.mode: precise
+    incremental.snapshot.chunk.size: 10240
+    kafka.consumer.offset.commit.enabled: true
+    key.converter: io.confluent.connect.avro.AvroConverter
+    key.converter.enhanced.avro.schema.support: true
+    key.converter.schema.registry.url: http://schema-registry:8081
+    max.batch.size: 20480
+    max.queue.size: 81290
+    max.request.size: 10240
+    name: debezium-connector
+    plugin.name: pgoutput
+    publication.autocreate.mode: filtered
+    publication.name: debezium_connector
+    read.only: false
+    schema.include.list: public
+    slot.name: debezium_connector
+    snapshot.max.threads: 10
+    snapshot.mode: initial
+    table.include.list: public.users,public.orders,public.products
+    time.precision.mode: connect
+    topic.creation.default.partitions: 1
+    topic.creation.default.replication.factor: 1
+    topic.creation.enable: false
+    topic.prefix: postgres
+    transforms: Unwrap,RenameFieldValue
+    transforms.RenameFieldValue.renames: __source_ts_ms:__timestamp,__source_lsn:__log_sequence_number
+    transforms.RenameFieldValue.type: org.apache.kafka.connect.transforms.ReplaceField$Value
+    transforms.Unwrap.add.fields: source.ts_ms,source.lsn
+    transforms.Unwrap.delete.handling.mode: rewrite
+    transforms.Unwrap.drop.tombstones: true
+    transforms.Unwrap.sanitize.field.names: true
+    transforms.Unwrap.type: io.debezium.transforms.ExtractNewRecordState
+    value.converter: io.confluent.connect.avro.AvroConverter
+    value.converter.enhanced.avro.schema.support: true
+    value.converter.schema.registry.url: http://schema-registry:8081
