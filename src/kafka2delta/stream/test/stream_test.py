@@ -32,8 +32,8 @@ def get_delta_table_path(destination_s3_bucket: str, delta_tables_base_path: str
     dict(schema="public", name="users", exists=True),
     dict(schema="test", name="not_exists", exists=False),
 ])
-def test_postgres_tables_exist(postgres_client: cursor, table: dict[str, Any]) -> None:
-    postgres_client.execute(f"""
+def test_postgres_tables_exist(pg_cursor: cursor, table: dict[str, Any]) -> None:
+    pg_cursor.execute(f"""
     SELECT EXISTS (
         SELECT 1
         FROM information_schema.tables
@@ -42,7 +42,7 @@ def test_postgres_tables_exist(postgres_client: cursor, table: dict[str, Any]) -
         AND table_name = '{table["name"]}'
     );
     """)
-    exists = postgres_client.fetchone()[0]
+    exists = pg_cursor.fetchone()[0]
     assert exists == table["exists"], (f"Expected {table['schema']}.{table['name']} to "
                                        f"{'exist' if table['exists'] else 'not exist'}!")
 
@@ -82,8 +82,9 @@ def delta_table_configs(s3_bucket: str, database: str, kafka_topics: list[str]) 
     }
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def streaming_query(
+        add_users: int,
         kafka_topics: list[str],
         delta_table_configs: dict[str, DeltaTableConfig],
         kafka_bootstrap_server_url: str,
@@ -133,21 +134,22 @@ def test_start_streaming(spark: SparkSession, streaming_query: str) -> None:
 
 
 @pytest.fixture
-def add_users(postgres_client: cursor) -> int:
-    postgres_client.execute("""
+def add_users(pg_cursor: cursor) -> int:
+    pg_cursor.execute("""
     INSERT INTO public.users (name, email, created_at) VALUES
     ('Alice Johnson', 'alice.johnson@example.com', '2024-01-01'),
-    ('Bob Smith', 'bob.smith@example.com', '2024-01-02'),
-    ('Charlie Brown', 'charlie.brown@example.com', '2024-01-03'),
-    ('David White', 'david.white@example.com', '2024-01-04'),
-    ('Emma Green', 'emma.green@example.com', '2024-01-05'),
-    ('Frank Black', 'frank.black@example.com', '2024-01-06'),
-    ('Grace Hall', 'grace.hall@example.com', '2024-01-07'),
-    ('Henry Adams', 'henry.adams@example.com', '2024-01-08'),
-    ('Isabella Lewis', 'isabella.lewis@example.com', '2024-01-09'),
-    ('Jack Miller', 'jack.miller@example.com', '2024-01-10')
+    ('Bob Smith', 'bob.smith@example.com', '2025-01-02'),
+    ('Charlie Brown', 'charlie.brown@example.com', '2023-01-03'),
+    ('David White', 'david.white@example.com', '2024-02-04'),
+    ('Emma Green', 'emma.green@example.com', '2024-03-05'),
+    ('Frank Black', 'frank.black@example.com', '2024-04-06'),
+    ('Grace Hall', 'grace.hall@example.com', '2025-02-07'),
+    ('Henry Adams', 'henry.adams@example.com', '2024-02-08'),
+    ('Isabella Lewis', 'isabella.lewis@example.com', '2024-11-09'),
+    ('Jack Miller', 'jack.miller@example.com', '2024-12-10')
     ON CONFLICT (email) DO NOTHING;
     """)
+    sleep(60)
     return 10
 
 

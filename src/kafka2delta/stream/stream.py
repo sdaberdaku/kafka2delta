@@ -153,7 +153,7 @@ def stream_to_delta(
         schema_registry_url: str,
         starting_offset: Literal["earliest", "latest"] = "earliest",
         fail_on_data_loss: bool = True,
-        processing_time: str | None = "1 minute",
+        processing_time: str | None = "0 seconds",
 ) -> StreamingQuery:
     """
     Starts a Spark Structured Streaming Query that reads messages from the provided Kafka topics and merges it into
