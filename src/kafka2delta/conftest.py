@@ -7,7 +7,7 @@ import psycopg2
 import pytest
 from confluent_kafka.admin import AdminClient
 from mypy_boto3_s3 import S3Client
-from psycopg2.extensions import cursor
+from psycopg2.extensions import cursor, ISOLATION_LEVEL_AUTOCOMMIT
 from pyspark.sql import SparkSession
 
 LOCALSTACK_URL = "http://localstack.localstack.svc.cluster.local:4566"
@@ -77,9 +77,9 @@ def spark(s3_bucket: str) -> Generator[SparkSession, None, None]:
         "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         "io.delta:delta-spark_2.12:3.2.0",
         "org.apache.hadoop:hadoop-aws:3.3.4",
-        "org.apache.spark:spark-avro_2.12:3.5.5",
-        "org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.5",
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5"
+        "org.apache.spark:spark-avro_2.12:3.5.1",
+        "org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.1",
+        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
     }
     with tempfile.TemporaryDirectory() as tempdir:
         spark = (
@@ -109,7 +109,7 @@ def spark(s3_bucket: str) -> Generator[SparkSession, None, None]:
 
 
 @pytest.fixture
-def postgres_client() -> Generator[cursor, None, None]:
+def pg_cursor() -> Generator[cursor, None, None]:
     """
     Fixture to create and yield a PostgreSQL connection
     :yield: A PostgreSQL cursor
@@ -121,7 +121,10 @@ def postgres_client() -> Generator[cursor, None, None]:
         "host": "postgres-postgresql.postgres.svc.cluster.local",
         "port": "5432"
     }
-    # Use a context manager to handle connection and cursor cleanup
-    with psycopg2.connect(**db_config) as conn:
-        with conn.cursor() as cur:
-            yield cur
+    conn = psycopg2.connect(**db_config)
+    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  # Enable autocommit
+    try:
+        with conn.cursor() as curs:
+            yield curs
+    finally:
+        conn.close()
