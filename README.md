@@ -170,7 +170,7 @@ Now we can start setting up Kafka and the related resources:
 # Create Kafka Cluster and Kafka Nodepool CRs
 kubectl apply -f ./resources/kafka-cluster.yaml
 ```
-
+Once the Kafka cluster and the Entity operator are up, we can create the topics.
 ```shell
 # Create Kafka topics (one for each table to replicate)
 kubectl apply -f ./resources/kafka-topics.yaml
@@ -245,6 +245,8 @@ Test can be run with the following command:
 ```shell
 python -m pytest .
 ```
+
+The Spark UI can be viewed at [http://localhost:4040](http://localhost:4040).
 
 ## Clean up
 To clean up the created resources delete the kind cluster:
