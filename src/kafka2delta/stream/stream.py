@@ -14,6 +14,7 @@ from kafka2delta.utils import (
 
 
 class StreamingQueryException(Exception):
+    """Custom exception for handling streaming query errors."""
     pass
 
 
@@ -25,7 +26,7 @@ def merge_micro_batch(
         deleted_col_name: str = "__deleted"
 ) -> Callable[[DataFrame, int], None]:
     """
-    Returns a function used for merge Structured Streaming micro-batches.
+    Returns a function used for merging Structured Streaming micro-batches.
 
     :param schema_registry_url: Confluent Schema Registry URL.
     :param delta_table_configs: Dict providing the delta table configurations for each topic.
