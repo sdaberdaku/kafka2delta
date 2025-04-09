@@ -16,11 +16,6 @@ def get_delta_table_name(kafka_topic: str) -> str:
     return kafka_topic.replace(".", "_")
 
 
-def get_delta_table_qualified_name(database: str, kafka_topic: str) -> str:
-    delta_table_name = get_delta_table_name(kafka_topic)
-    return f"{database}.{delta_table_name}"
-
-
 def get_delta_table_path(destination_s3_bucket: str, delta_tables_base_path: str, kafka_topic: str) -> str:
     delta_table_name = get_delta_table_name(kafka_topic)
     return f"s3a://{destination_s3_bucket}/{delta_tables_base_path}/{delta_table_name}"
@@ -74,9 +69,10 @@ def delta_table_configs(s3_bucket: str, database: str, kafka_topics: list[str]) 
     delta_tables_base_path = "delta_tables"
     return {
         kafka_topic: DeltaTableConfig(
-            qualified_name=get_delta_table_qualified_name(database, kafka_topic),
+            schema=database,
+            table_name=get_delta_table_name(kafka_topic),
             path=get_delta_table_path(s3_bucket, delta_tables_base_path, kafka_topic),
-            additional_cols=[f.year("created_at").alias("year"), f.month("created_at").alias("month")],
+            additional_cols=["YEAR(created_at) AS year", "MONTH(created_at) AS month"],
             partition_cols=["year", "month"],
         ) for kafka_topic in kafka_topics
     }

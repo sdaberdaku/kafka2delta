@@ -1,30 +1,18 @@
-from typing import Callable, Literal
+from typing import Callable, Literal, TYPE_CHECKING
 
-from pyspark.sql import SparkSession, DataFrame, functions as f, types as t, Window
-from pyspark.sql.avro.functions import from_avro
-from pyspark.sql.streaming import StreamingQuery
-
-from kafka2delta.config import DeltaTableConfig
-from kafka2delta.utils import (
-    cast_debezium_columns,
-    create_delta_table_if_not_exist,
-    get_json_schema,
-    get_column_names_from_schema,
-)
-
-
-class StreamingQueryException(Exception):
-    """Custom exception for handling streaming query errors."""
-    pass
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
+    from pyspark.sql.streaming import StreamingQuery
+    from kafka2delta.config import DeltaTableConfig
 
 
 def merge_micro_batch(
         schema_registry_url: str,
-        delta_table_configs: dict[str, DeltaTableConfig],
+        delta_table_configs: dict[str, "DeltaTableConfig"],
         avro_options: dict = None,
         lsn_col_name: str = "__log_sequence_number",
         deleted_col_name: str = "__deleted"
-) -> Callable[[DataFrame, int], None]:
+) -> Callable[["DataFrame", int], None]:
     """
     Returns a function used for merging Structured Streaming micro-batches.
 
@@ -35,11 +23,20 @@ def merge_micro_batch(
     :param deleted_col_name: Name of the column indicating if the record has been deleted. Defaults to "__deleted".
     :return: A function used for merging micro-batches.
     """
+    from pyspark.sql import functions as f, types as t, Window
+    from pyspark.sql.avro.functions import from_avro
+
+    from kafka2delta.utils import (
+        cast_debezium_columns,
+        create_delta_table_if_not_exist,
+        get_json_schema,
+        get_column_names_from_schema,
+    )
 
     if avro_options is None:
         avro_options = {"mode": "FAILFAST"}
 
-    def func(batch_df: DataFrame, batch_id: int) -> None:
+    def func(batch_df: "DataFrame", batch_id: int) -> None:
         """
         Function that parses each micro-batch.
 
@@ -145,17 +142,17 @@ def merge_micro_batch(
 
 
 def stream_to_delta(
-        spark: SparkSession,
+        spark: "SparkSession",
         query_name: str,
         kafka_bootstrap_server_url: str,
         kafka_topics: list[str],
-        delta_table_configs: dict[str, DeltaTableConfig],
+        delta_table_configs: dict[str, "DeltaTableConfig"],
         checkpoints_path: str,
         schema_registry_url: str,
         starting_offset: Literal["earliest", "latest"] = "earliest",
         fail_on_data_loss: bool = True,
         processing_time: str | None = "0 seconds",
-) -> StreamingQuery:
+) -> "StreamingQuery":
     """
     Starts a Spark Structured Streaming Query that reads messages from the provided Kafka topics and merges it into
     target Delta Tables
@@ -177,6 +174,7 @@ def stream_to_delta(
     :return: The newly created StreamingQuery object.
     :raises StreamingQueryException: If the streaming query fails to start.
     """
+    from pyspark.sql.streaming import StreamingQueryException
 
     df = (spark
           .readStream

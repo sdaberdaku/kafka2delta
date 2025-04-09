@@ -1,9 +1,11 @@
 import json
-
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from pyspark.sql import SparkSession, Column, functions as f, types as t
+from typing import TYPE_CHECKING
 
 from kafka2delta.config import DeltaTableConfig
+
+if TYPE_CHECKING:
+    from pyspark.sql import SparkSession, Column
+    from pyspark.sql.types import StructType
 
 
 def get_json_schema(schema_registry_url: str, schema_id: int) -> str:
@@ -13,6 +15,8 @@ def get_json_schema(schema_registry_url: str, schema_id: int) -> str:
     :param schema_id: Schema ID.
     :return: JSON schema associated with the given schema ID.
     """
+    from confluent_kafka.schema_registry import SchemaRegistryClient
+
     with SchemaRegistryClient({'url': schema_registry_url}) as client:
         return client.get_schema(schema_id=schema_id).schema_str
 
@@ -31,8 +35,8 @@ def get_column_names_from_schema(schema_registry_url: str, schema_id: int) -> li
 
 
 def create_delta_table_if_not_exist(
-        spark: SparkSession,
-        schema: t.StructType,
+        spark: "SparkSession",
+        schema: "StructType",
         config: DeltaTableConfig,
 ) -> None:
     """

@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-    "setuptools",
-    "wheel"
+    "setuptools>=75.8.0",
+    "wheel>=0.45.1"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -24,7 +24,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: Apache Software License",
 ]
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 keywords = ["CDC", "Debezium", "Kafka", "Delta Lake", "Spark", "PostgreSQL"]
 
 [project.readme]
@@ -37,9 +37,10 @@ Issues = "https://github.com/sdaberdaku/kafka2delta/issues"
 
 [tool.setuptools]
 include-package-data = true
+packages = { find = { where = ["src"] } }
 
 [tool.setuptools.dynamic]
 version = { attr = "kafka2delta.__version__" }
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.pytest.ini_options]
+testpaths = ["src"]
