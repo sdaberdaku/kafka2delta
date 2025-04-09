@@ -12,7 +12,7 @@ description = "Stream Change Data Capture data from Kafka into Delta Tables usin
 authors = [
     { name = "Sebastian Daberdaku", email = "112859176+sdaberdaku@users.noreply.github.com" },
 ]
-requires-python = "~=3.10"
+requires-python = ">=3.10"
 dependencies = [
     "confluent-kafka>=2.5.0,<2.6.0",
     "delta-spark>=3.2.0,<4.0.0",
@@ -37,10 +37,9 @@ Issues = "https://github.com/sdaberdaku/kafka2delta/issues"
 
 [tool.setuptools]
 include-package-data = true
-packages = { find = { where = ["src"] } }
 
 [tool.setuptools.dynamic]
 version = { attr = "kafka2delta.__version__" }
 
-[tool.pytest.ini_options]
-testpaths = ["src"]
+[tool.setuptools.packages.find]
+where = ["src"]
