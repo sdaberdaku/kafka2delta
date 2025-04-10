@@ -58,7 +58,7 @@ def create_delta_table_if_not_exist(
     dt_writer.saveAsTable(config.qualified_name)
 
 
-def cast_debezium_columns(avro_json_schema: str) -> list[Column]:
+def cast_debezium_columns(avro_json_schema: str) -> list["Column"]:
     """
     Converts a JSON-encoded Debezium schema into a list of PySpark Column objects, casting specific fields based on
     the schema's `connect.name` attribute.
@@ -66,6 +66,8 @@ def cast_debezium_columns(avro_json_schema: str) -> list[Column]:
     :param avro_json_schema: Avro schema as JSON string.
     :return: List of columns cast to the required types whenever appropriate.
     """
+    from pyspark.sql import functions as f, types as t
+
     avro_dict_schema = json.loads(avro_json_schema)
 
     cast_types = {
