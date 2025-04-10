@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from pyspark.sql import Column
+
+    ColumnOrName = Union[Column, str]
 
 
 @dataclass(kw_only=True)
@@ -23,7 +25,7 @@ class DeltaTableConfig:
     schema: str
     table_name: str
     path: str
-    additional_cols: list["Column" | str] = field(default_factory=list)
+    additional_cols: list["ColumnOrName"] = field(default_factory=list)
     partition_cols: list[str] = field(default_factory=list)
 
     @property
