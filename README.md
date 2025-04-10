@@ -182,6 +182,7 @@ helm install schema-registry oci://registry-1.docker.io/bitnamicharts/schema-reg
   --version 20.0.0 \
   --namespace cdc \
   --create-namespace \
+  --timeout 15m \
   --wait \
   --set replicaCount=1 \
   --set avroCompatibilityLevel=none \
