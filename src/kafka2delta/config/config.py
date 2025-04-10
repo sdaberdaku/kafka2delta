@@ -1,12 +1,5 @@
 from dataclasses import dataclass, field
 
-from typing import TYPE_CHECKING, Union
-
-if TYPE_CHECKING:
-    from pyspark.sql import Column
-
-    ColumnOrName = Union[Column, str]
-
 
 @dataclass(kw_only=True)
 class DeltaTableConfig:
@@ -17,7 +10,7 @@ class DeltaTableConfig:
         schema: The database schema where the Delta table will be created.
         table_name: The name of the Delta table.
         path: The file system path where the Delta table is stored.
-        additional_cols: A list of custom columns to be added to the Delta table schema.
+        additional_cols: A list of custom columns expressions to be added to the Delta table schema.
             Default is an empty list, meaning no additional columns are added.
         partition_cols: A list of column names to be used for partitioning the Delta table.
             Default is an empty list, meaning no partitioning will be applied.
@@ -25,7 +18,7 @@ class DeltaTableConfig:
     schema: str
     table_name: str
     path: str
-    additional_cols: list["ColumnOrName"] = field(default_factory=list)
+    additional_cols: list[str] = field(default_factory=list)
     partition_cols: list[str] = field(default_factory=list)
 
     @property

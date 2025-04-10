@@ -97,7 +97,10 @@ def merge_micro_batch(
 
                         # Add additional columns.
                         if dt_config.additional_cols:
-                            source_df = source_df.select(*source_df.columns, *dt_config.additional_cols)
+                            source_df = source_df.select(
+                                *source_df.columns,
+                                *[f.expr(a) for a in dt_config.additional_cols]
+                            )
 
                         # Filter out "deleted" column.
                         target_schema = t.StructType([c for c in source_df.schema.fields if c.name != deleted_col_name])
