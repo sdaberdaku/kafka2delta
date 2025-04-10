@@ -1,7 +1,7 @@
 from typing import Callable, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyspark.sql import DataFrame
+    from pyspark.sql import DataFrame, SparkSession
     from pyspark.sql.streaming import StreamingQuery
     from kafka2delta.config import DeltaTableConfig
 
