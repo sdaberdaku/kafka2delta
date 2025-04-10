@@ -3,7 +3,7 @@ addReviewers: true
 
 # A list of reviewers to be added to pull requests (GitHub username)
 reviewers:
-  - codebuild
+  - Copilot
 
 # A number of reviewers added to the pull request
 # Set 0 to add all the reviewers (default: 0)
