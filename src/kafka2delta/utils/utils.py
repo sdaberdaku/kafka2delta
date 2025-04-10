@@ -66,6 +66,8 @@ def cast_debezium_columns(avro_json_schema: str) -> list["Column"]:
     :param avro_json_schema: Avro schema as JSON string.
     :return: List of columns cast to the required types whenever appropriate.
     """
+    from pyspark.sql import functions as f, types as t
+
     avro_dict_schema = json.loads(avro_json_schema)
 
     cast_types = {
