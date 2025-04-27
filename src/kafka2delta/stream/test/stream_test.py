@@ -1,13 +1,15 @@
 import logging
-from time import sleep
+import uuid
+from time import time
 from typing import Generator, Any
 
 import pytest
 from confluent_kafka.admin import AdminClient
 from psycopg2.extensions import cursor
-from pyspark.sql import SparkSession, functions as f
+from pyspark.sql import SparkSession
 
 from kafka2delta.config import DeltaTableConfig
+from kafka2delta.stream.test.stream_listener import BatchProcessingListener
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,6 @@ def delta_table_configs(s3_bucket: str, database: str, kafka_topics: list[str]) 
 
 @pytest.fixture
 def streaming_query(
-        add_users: int,
         kafka_topics: list[str],
         delta_table_configs: dict[str, DeltaTableConfig],
         kafka_bootstrap_server_url: str,
@@ -129,38 +130,173 @@ def test_start_streaming(spark: SparkSession, streaming_query: str) -> None:
     assert streaming_query in active_queries, f"Expected {streaming_query} to be in {active_queries}!"
 
 
-@pytest.fixture
-def add_users(pg_cursor: cursor) -> int:
-    pg_cursor.execute("""
-    INSERT INTO public.users (name, email, created_at) VALUES
-    ('Alice Johnson', 'alice.johnson@example.com', '2024-01-01'),
-    ('Bob Smith', 'bob.smith@example.com', '2025-01-02'),
-    ('Charlie Brown', 'charlie.brown@example.com', '2023-01-03'),
-    ('David White', 'david.white@example.com', '2024-02-04'),
-    ('Emma Green', 'emma.green@example.com', '2024-03-05'),
-    ('Frank Black', 'frank.black@example.com', '2024-04-06'),
-    ('Grace Hall', 'grace.hall@example.com', '2025-02-07'),
-    ('Henry Adams', 'henry.adams@example.com', '2024-02-08'),
-    ('Isabella Lewis', 'isabella.lewis@example.com', '2024-11-09'),
-    ('Jack Miller', 'jack.miller@example.com', '2024-12-10')
-    ON CONFLICT (email) DO NOTHING;
-    """)
-    sleep(60)
-    return 10
-
-
-def test_delta_table_creation_after_postgres_insert(
+def test_delta_table_insertion_after_postgres_insert(
         spark: SparkSession,
         streaming_query: str,
-        add_users: int,
-        delta_table_configs: dict[str, DeltaTableConfig]
+        streaming_query_listener: BatchProcessingListener,
+        delta_table_configs: dict[str, DeltaTableConfig],
+        pg_cursor: cursor,
 ) -> None:
-    sleep(60)
-    from delta.tables import DeltaTable
-    users_delta_table_config = delta_table_configs["postgres.public.users"]
-    exists = DeltaTable.isDeltaTable(spark, users_delta_table_config.path)
-    assert exists, "Expected Delta Table to already exist!"
+    # Wait for initial snapshot to complete by detecting idle state of streaming query
+    snapshot_complete = streaming_query_listener.wait_for_snapshot_to_complete()
+    assert snapshot_complete, "Initial snapshot did not complete - query never became idle"
 
-    users_df = spark.read.format("delta").load(users_delta_table_config.path)
-    n_records = users_df.count()
-    assert add_users == n_records, f"Expected {add_users} records, found {n_records} instead!"
+    test_id = f"test-{int(time())}-{str(uuid.uuid4()).split('-')[0]}"
+    logger.info(f"Running test with ID: {test_id}")
+
+    # Insert test data
+    streaming_query_listener.set_checkpoint()
+    num_of_rows = 10
+    pg_cursor.execute(f"""
+        INSERT INTO public.users (name, email, created_at) VALUES
+        ('Alice Johnson', 'alice.{test_id}@example.com', '2024-01-01'),
+        ('Bob Smith', 'bob.{test_id}@example.com', '2025-01-02'),
+        ('Charlie Brown', 'charlie.{test_id}@example.com', '2023-01-03'),
+        ('David White', 'david.{test_id}@example.com', '2024-02-04'),
+        ('Emma Green', 'emma.{test_id}@example.com', '2024-03-05'),
+        ('Frank Black', 'frank.{test_id}@example.com', '2024-04-06'),
+        ('Grace Hall', 'grace.{test_id}@example.com', '2025-02-07'),
+        ('Henry Adams', 'henry.{test_id}@example.com', '2024-02-08'),
+        ('Isabella Lewis', 'isabella.{test_id}@example.com', '2024-11-09'),
+        ('Jack Miller', 'jack.{test_id}@example.com', '2024-12-10')
+        ON CONFLICT (email) DO NOTHING;
+    """)
+
+    # Wait for the new rows to be processed
+    success = streaming_query_listener.wait_for_rows(expected_rows_count=num_of_rows)
+    assert success, f"Failed to process {num_of_rows} additional rows" \
+                    f" error: {streaming_query_listener.error_message}"
+
+    # Verify Delta table exists and has our data
+    from delta.tables import DeltaTable
+    users_delta_path = delta_table_configs["postgres.public.users"].path
+    assert DeltaTable.isDeltaTable(spark, users_delta_path), "Delta table does not exist"
+
+    # Quick check that at least one test record exists
+    users_df = spark.read.format("delta").load(users_delta_path)
+    test_records = users_df.filter(f"email like '%{test_id}%'")
+
+    actual_count = test_records.count()
+    assert actual_count == num_of_rows, f"Expected {num_of_rows} test records, found {actual_count}"
+
+
+def test_delta_table_update_after_postgres_update(
+        spark: SparkSession,
+        streaming_query: str,
+        streaming_query_listener: BatchProcessingListener,
+        delta_table_configs: dict[str, DeltaTableConfig],
+        pg_cursor: cursor,
+) -> None:
+    # Wait for initial snapshot to complete by detecting idle state of streaming query
+    snapshot_complete = streaming_query_listener.wait_for_snapshot_to_complete()
+    assert snapshot_complete, "Initial snapshot did not complete - query never became idle"
+
+    # Generate unique test identifier
+    test_id = f"test-{int(time())}-{str(uuid.uuid4()).split('-')[0]}"
+    logger.info(f"Running test with ID: {test_id}")
+
+    # Insert initial test data
+    streaming_query_listener.set_checkpoint()
+    num_of_initial_rows = 5
+    pg_cursor.execute(f"""
+        INSERT INTO public.users (name, email, created_at) VALUES
+        ('Alice Johnson', 'alice.{test_id}@example.com', '2024-12-31'),
+        ('Bob Smith', 'bob.{test_id}@example.com', '2025-01-02'),
+        ('Charlie Brown', 'charlie.{test_id}@example.com', '2024-12-31'),
+        ('David White', 'david.{test_id}@example.com', '2024-12-31'),
+        ('Emma Green', 'emma.{test_id}@example.com', '2024-03-05')
+    ON CONFLICT (email) DO NOTHING;
+    """)
+
+    # Wait for the new rows to be processed
+    success = streaming_query_listener.wait_for_rows(expected_rows_count=num_of_initial_rows)
+    assert success, f"Failed to process {num_of_initial_rows} additional rows" \
+                    f" error: {streaming_query_listener.error_message}"
+
+    # Perform update operation
+    streaming_query_listener.set_checkpoint()
+    num_of_updated_rows = 3
+    pg_cursor.execute(f"""
+        UPDATE public.users
+        SET
+            name = name || ' (Updated)'
+        WHERE email LIKE '%{test_id}%'
+        AND created_at = '2024-12-31';
+    """)
+
+    # Wait for the updates to be processed
+    success = streaming_query_listener.wait_for_rows(expected_rows_count=num_of_updated_rows)
+    assert success, f"Failed to process {num_of_updated_rows} update rows," \
+                    f" error: {streaming_query_listener.error_message}"
+
+    # Read the updated Delta table
+    users_df = spark.read.format("delta").load(delta_table_configs["postgres.public.users"].path)
+    test_users_df = users_df.filter(f"email like '%{test_id}%'")
+    actual_count = test_users_df.count()
+    assert actual_count == num_of_initial_rows, f"Expected {num_of_initial_rows} test records, found {actual_count}"
+
+    # Verify updated rows
+    updated_records = test_users_df.filter("name like '%Updated%'")
+    assert updated_records.count() == num_of_updated_rows, "Not all records were updated correctly"
+
+
+def test_delta_table_deletion_after_postgres_delete(
+        spark: SparkSession,
+        streaming_query: str,
+        streaming_query_listener: BatchProcessingListener,
+        delta_table_configs: dict[str, DeltaTableConfig],
+        pg_cursor: cursor,
+) -> None:
+    # Wait for initial snapshot to complete by detecting idle state of streaming query
+    snapshot_complete = streaming_query_listener.wait_for_snapshot_to_complete()
+    assert snapshot_complete, "Initial snapshot did not complete - query never became idle"
+
+    # Generate unique test identifier
+    test_id = f"test-{int(time())}-{str(uuid.uuid4()).split('-')[0]}"
+    logger.info(f"Running test with ID: {test_id}")
+
+    # Insert initial test data
+    streaming_query_listener.set_checkpoint()
+    num_of_initial_rows = 5
+    pg_cursor.execute(f"""
+        INSERT INTO public.users (name, email, created_at) VALUES
+        ('Alice Johnson', 'alice.{test_id}@example.com', '2024-12-31'),
+        ('Bob Smith', 'bob.{test_id}@example.com', '2025-01-02'),
+        ('Charlie Brown', 'charlie.{test_id}@example.com', '2024-12-31'),
+        ('David White', 'david.{test_id}@example.com', '2024-12-31'),
+        ('Emma Green', 'emma.{test_id}@example.com', '2024-03-05')
+    ON CONFLICT (email) DO NOTHING;
+    """)
+
+    # Wait for the new rows to be processed
+    success = streaming_query_listener.wait_for_rows(expected_rows_count=num_of_initial_rows)
+    assert success, f"Failed to process {num_of_initial_rows} additional rows" \
+                    f" error: {streaming_query_listener.error_message}"
+
+    # Perform delete operation
+    streaming_query_listener.set_checkpoint()
+    num_of_deleted_rows = 3
+    pg_cursor.execute(f"""
+        DELETE FROM public.users
+        WHERE email LIKE '%{test_id}%'
+        AND created_at = '2024-12-31';
+    """)
+
+    # Wait for the deletions to be processed
+    success = streaming_query_listener.wait_for_rows(expected_rows_count=num_of_deleted_rows)
+    assert success, f"Failed to process {num_of_deleted_rows} delete rows," \
+                    f" error: {streaming_query_listener.error_message}"
+
+    # Read the updated Delta table
+    users_df = spark.read.format("delta").load(delta_table_configs["postgres.public.users"].path)
+    test_users_df = users_df.filter(f"email like '%{test_id}%'")
+
+    # Verify remaining records
+    actual_count = test_users_df.count()
+    expected_remaining_rows = num_of_initial_rows - num_of_deleted_rows
+    assert actual_count == expected_remaining_rows, \
+        f"Expected {expected_remaining_rows} test records after deletion, found {actual_count}"
+
+    # Verify specific records remain
+    remaining_records = test_users_df.filter("created_at != '2024-12-31'")
+    assert remaining_records.count() == 2, "Incorrect number of records remained after deletion"
