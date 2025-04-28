@@ -111,27 +111,41 @@ def merge_micro_batch(
                             config=dt_config
                         )
 
-                        # Prepare the MERGE statement.
+                        # Perform the upsert operation.
+                        upserted_records_df = source_df.filter(f.col(deleted_col_name) != f.lit('true'))
                         merge_cols = primary_key_cols + dt_config.partition_cols
                         merge_condition = " AND ".join(f"target.{c} = {source}.{c}" for c in merge_cols)
                         update = ", ".join(f"{c} = {source}.{c}" for c in target_schema.names)
                         insert_cols = ", ".join(target_schema.names)
                         insert_values = ", ".join(f"{source}.{c}" for c in target_schema.names)
-                        merge_query = f"""
+                        upsert_query = f"""
                             MERGE INTO delta.`{dt_config.path}` AS target
                             USING {source}
                               ON {merge_condition}
-                            WHEN MATCHED AND {source}.{deleted_col_name} = 'true' THEN 
-                              DELETE
                             WHEN MATCHED AND target.{lsn_col_name} < {source}.{lsn_col_name} THEN
                               UPDATE SET {update}
-                            WHEN NOT MATCHED AND {source}.{deleted_col_name} <> 'true' THEN 
+                            WHEN NOT MATCHED THEN 
                               INSERT ({insert_cols}) VALUES ({insert_values})
                         """
                         # Create/replace temp view for the current stream.
-                        source_df.createOrReplaceTempView(name=source)
+                        upserted_records_df.createOrReplaceTempView(name=source)
                         # Run the MERGE query.
-                        source_df.sparkSession.sql(merge_query)
+                        upserted_records_df.sparkSession.sql(upsert_query)
+
+                        # Perform the delete operation.
+                        deleted_records_df = source_df.filter(f.col(deleted_col_name) == f.lit('true'))
+                        delete_condition = " AND ".join(f"target.{c} = {source}.{c}" for c in primary_key_cols)
+                        delete_query = f"""
+                            MERGE INTO delta.`{dt_config.path}` AS target
+                            USING {source}
+                              ON {delete_condition}
+                            WHEN MATCHED THEN 
+                              DELETE
+                        """
+                        # Create/replace temp view for the current stream.
+                        deleted_records_df.createOrReplaceTempView(name=source)
+                        # Run the MERGE query.
+                        deleted_records_df.sparkSession.sql(delete_query)
                 finally:
                     # Drop the temp view.
                     current_batch_df.sparkSession.sql(f"DROP VIEW IF EXISTS {source}")
