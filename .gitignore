@@ -161,4 +161,3 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 /Miniconda3-latest-Linux-x86_64.sh
-/kubectl
