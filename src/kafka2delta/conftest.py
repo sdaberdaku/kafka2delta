@@ -132,7 +132,7 @@ def pg_cursor() -> Generator[cursor, None, None]:
         conn.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def streaming_query_listener(spark: SparkSession) -> Generator[BatchProcessingListener, None, None]:
     """Fixture for baseline-aware streaming query listener"""
     listener = BatchProcessingListener()
