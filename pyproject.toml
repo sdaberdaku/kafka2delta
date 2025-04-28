@@ -23,9 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Operating System :: OS Independent",
-    "License :: OSI Approved :: Apache Software License",
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 keywords = ["CDC", "Debezium", "Kafka", "Delta Lake", "Spark", "PostgreSQL"]
 
 [project.readme]
