@@ -21,9 +21,14 @@ An Avro-encoded message is composed as follows:
 Create Conda environment and install the requirements with the following code:
 
 ```shell
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/miniconda3/bin/activate
+
 conda create --name kafka2delta python=3.10 -y
 conda activate kafka2delta
 pip install -r requirements-dev.txt
+conda install -c conda-forge openjdk=11   # Install Java Development Kit (JDK)
 ```
 
 ## Installation
@@ -62,6 +67,13 @@ Now we can install `helm` and `kind`. A convenient way of doing so is by using `
 ```shell
 brew install helm kind
 ```
+install brew
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.profile
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+```
+
 
 Now we are ready to create our `kind` cluster. Use the following commands to create the K8s cluster for testing:
 ```shell
@@ -143,6 +155,9 @@ CREATE TABLE products (
     price DECIMAL(10,2) NOT NULL,
     created_at DATE NOT NULL    
 );
+ALTER TABLE public.users REPLICA IDENTITY FULL;
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.products REPLICA IDENTITY FULL;
 "
 ```
 

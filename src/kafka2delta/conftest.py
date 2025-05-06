@@ -10,6 +10,8 @@ from mypy_boto3_s3 import S3Client
 from psycopg2.extensions import cursor, ISOLATION_LEVEL_AUTOCOMMIT
 from pyspark.sql import SparkSession
 
+from kafka2delta.stream.test.stream_listener import BatchProcessingListener
+
 LOCALSTACK_URL = "http://localstack.localstack.svc.cluster.local:4566"
 LOCALSTACK_ACCESS_KEY_ID = "test"
 LOCALSTACK_SECRET_ACCESS_KEY = "test"
@@ -128,3 +130,12 @@ def pg_cursor() -> Generator[cursor, None, None]:
             yield curs
     finally:
         conn.close()
+
+
+@pytest.fixture(scope="session")
+def streaming_query_listener(spark: SparkSession) -> Generator[BatchProcessingListener, None, None]:
+    """Fixture for baseline-aware streaming query listener"""
+    listener = BatchProcessingListener()
+    spark.streams.addListener(listener)
+    yield listener
+    spark.streams.removeListener(listener)

@@ -11,6 +11,7 @@ dynamic = ["version"]
 description = "Stream Change Data Capture data from Kafka into Delta Tables using Spark StructuredStreaming."
 authors = [
     { name = "Sebastian Daberdaku", email = "112859176+sdaberdaku@users.noreply.github.com" },
+    { name = "Aleksander Duka", email = "87473472+aleksanderduka@users.noreply.github.com" },
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -22,9 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Operating System :: OS Independent",
-    "License :: OSI Approved :: Apache Software License",
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 keywords = ["CDC", "Debezium", "Kafka", "Delta Lake", "Spark", "PostgreSQL"]
 
 [project.readme]

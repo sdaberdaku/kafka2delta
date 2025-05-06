@@ -16,9 +16,6 @@ spec:
     decimal.handling.mode: precise
     incremental.snapshot.chunk.size: 10240
     kafka.consumer.offset.commit.enabled: true
-    key.converter: io.confluent.connect.avro.AvroConverter
-    key.converter.enhanced.avro.schema.support: true
-    key.converter.schema.registry.url: http://schema-registry:8081
     max.batch.size: 20480
     max.queue.size: 81290
     max.request.size: 10240
@@ -37,14 +34,27 @@ spec:
     topic.creation.default.replication.factor: 1
     topic.creation.enable: false
     topic.prefix: postgres
+    # Configure the Debezium event flattening Single Message Transformation (SMT).
     transforms: Unwrap,RenameFieldValue
-    transforms.RenameFieldValue.renames: __source_ts_ms:__timestamp,__source_lsn:__log_sequence_number
-    transforms.RenameFieldValue.type: org.apache.kafka.connect.transforms.ReplaceField$Value
-    transforms.Unwrap.add.fields: source.ts_ms,source.lsn
-    transforms.Unwrap.delete.handling.mode: rewrite
-    transforms.Unwrap.drop.tombstones: true
-    transforms.Unwrap.sanitize.field.names: true
+    # New Record State Extraction SMT.
     transforms.Unwrap.type: io.debezium.transforms.ExtractNewRecordState
+    # The SMT retains the change event record in the stream and makes the following changes:
+    # Adds a value field to the record that contains the key/value pairs from the before field of the original record.
+    # Adds __deleted: true to the value of the record.
+    # Removes TOMBSTONE records.
+    transforms.Unwrap.delete.tombstone.handling.mode: rewrite
+    # Whether field names will be sanitized to adhere to Avro naming requirements.
+    transforms.Unwrap.sanitize.field.names: true
+    # Adds ts_ms and lsn fields to the simplified Kafka record.
+    transforms.Unwrap.add.fields: source.ts_ms,source.lsn
+    # Kafka Connect ReplaceField SMT for Confluent Platform
+    transforms.RenameFieldValue.type: org.apache.kafka.connect.transforms.ReplaceField$Value
+    # Field rename mappings.
+    transforms.RenameFieldValue.renames: __source_ts_ms:__timestamp,__source_lsn:__log_sequence_number
+    # Confluent Avro converter and Confluent Schema Registry properties.
+    key.converter: io.confluent.connect.avro.AvroConverter
+    key.converter.enhanced.avro.schema.support: true
+    key.converter.schema.registry.url: http://schema-registry:8081
     value.converter: io.confluent.connect.avro.AvroConverter
     value.converter.enhanced.avro.schema.support: true
     value.converter.schema.registry.url: http://schema-registry:8081
