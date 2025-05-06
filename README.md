@@ -155,6 +155,9 @@ CREATE TABLE products (
     price DECIMAL(10,2) NOT NULL,
     created_at DATE NOT NULL    
 );
+ALTER TABLE public.users REPLICA IDENTITY FULL;
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.products REPLICA IDENTITY FULL;
 "
 ```
 

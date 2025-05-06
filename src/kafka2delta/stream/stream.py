@@ -117,7 +117,6 @@ def merge_micro_batch(
                         update = ", ".join(f"{c} = source.{c}" for c in target_schema.names)
                         insert_cols = ", ".join(target_schema.names)
                         insert_values = ", ".join(f"source.{c}" for c in target_schema.names)
-
                         upsert_query = f"""
                             MERGE INTO delta.`{dt_config.path}` AS target
                             USING {{upserted_records_df}} AS source
