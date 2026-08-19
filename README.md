@@ -117,16 +117,21 @@ wal_level = 'logical'
 EOF
 )
 helm install postgres oci://registry-1.docker.io/bitnamicharts/postgresql \
-  --version 15.5.20 \
+  --version 16.7.27 \
   --namespace postgres \
   --create-namespace \
   --wait \
+  --set image.repository=bitnamilegacy/postgresql \
   --set auth.enablePostgresUser=true \
   --set auth.postgresPassword=postgres \
   --set primary.networkPolicy.enabled=false \
   --set primary.persistence.enabled=false \
   --set primary.configuration="${PG_CONFIG}"
 ```
+> **Note:** Bitnami removed the versioned tags from `docker.io/bitnami/*`, so the chart defaults now fail to pull.
+> The `image.repository` overrides above (and in the schema registry install below) point at the `bitnamilegacy`
+> mirror, which still hosts them. Helm prints a "substituted containers" warning for this - expected.
+
 
 After the installation is complete, we can create the tables that we will use for testing the CDC replication.
 `psql` can be installed with the following command:
@@ -172,8 +177,13 @@ helm install strimzi-kafka-operator oci://quay.io/strimzi-helm/strimzi-kafka-ope
   --wait \
   --set replicas=1 \
   --set watchAnyNamespace=true \
-  --set generateNetworkPolicy=false
+  --set generateNetworkPolicy=false \
+  --set resources.requests.cpu=200m \
+  --set resources.requests.memory=1Gi \
+  --set resources.limits.memory=1Gi
 ```
+> **Note:** the chart default of `384Mi` is not enough - the cluster operator gets `OOMKilled` and ends up in
+> `CrashLoopBackOff`, hence the increased memory request/limit above.
 
 Create the `cdc` K8s namespace:
 ```shell
@@ -199,6 +209,7 @@ helm install schema-registry oci://registry-1.docker.io/bitnamicharts/schema-reg
   --create-namespace \
   --timeout 15m \
   --wait \
+  --set image.repository=bitnamilegacy/schema-registry \
   --set replicaCount=1 \
   --set avroCompatibilityLevel=none \
   --set networkPolicy.enabled=false \
@@ -226,10 +237,10 @@ Before installing the Debezium Connector, we need to build the Kafka Connect Doc
 Kind cluster. The following command can be used to do so:
 ```shell
 # Build Kafka Connect Docker image with the required dependencies for running Debezium
-docker build -t strimzi-debezium-postgres:2.7.0.Final -f ./resources/kafka-connect.Dockerfile .
+docker build -t strimzi-debezium-postgres:3.0.8.Final -f ./resources/kafka-connect.Dockerfile .
 
 # Load the image to the Kind cluster
-kind load docker-image strimzi-debezium-postgres:2.7.0.Final --name kafka2delta
+kind load docker-image strimzi-debezium-postgres:3.0.8.Final --name kafka2delta
 ```
 
 Now we can create the Kafka Connect and Debezium connector configuration:
@@ -252,9 +263,13 @@ helm install localstack localstack-charts/localstack \
   --set replicaCount=1 \
   --set role.create=false \
   --set persistence.enabled=false \
+  --set image.tag=4.5.0 \
   --set startServices=s3 \
   --set service.type=ClusterIP
 ```
+> **Note:** the chart defaults to `image.tag=latest`, which now resolves to a build that refuses to start without a
+> `LOCALSTACK_AUTH_TOKEN` (`License activation failed! ... exit code 55`). The tests only use plain S3, so pin a
+> tagged community release instead.
 
 ## Running tests
 Test can be run with the following command:
@@ -263,6 +278,37 @@ python -m pytest .
 ```
 
 The Spark UI can be viewed at [http://localhost:4040](http://localhost:4040).
+
+### Service endpoints
+
+The tests default to the in-cluster DNS names, which resolve on the host while `telepresence connect` is active.
+Every endpoint can be overridden with an environment variable, so the suite can also run against port-forwarded
+services (or from inside the cluster) without touching the code:
+
+| Variable | Default |
+|---|---|
+| `POSTGRES_HOST` | `postgres-postgresql.postgres.svc.cluster.local` |
+| `POSTGRES_PORT` | `5432` |
+| `LOCALSTACK_URL` | `http://localstack.localstack.svc.cluster.local:4566` |
+| `KAFKA_BOOTSTRAP_SERVERS` | `cdc-kafka-bootstrap.cdc.svc.cluster.local:9092` |
+| `SCHEMA_REGISTRY_URL` | `http://schema-registry.cdc.svc.cluster.local:8081` |
+
+To run without telepresence, port-forward the services and point the variables at them:
+```shell
+kubectl -n postgres port-forward svc/postgres-postgresql 15432:5432 &
+kubectl -n localstack port-forward svc/localstack 14566:4566 &
+kubectl -n cdc port-forward svc/schema-registry 18081:8081 &
+
+POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=15432 \
+LOCALSTACK_URL=http://127.0.0.1:14566 \
+SCHEMA_REGISTRY_URL=http://127.0.0.1:18081 \
+python -m pytest src/kafka2delta/utils src/kafka2delta/stream/test/stream_test.py::test_postgres_tables_exist
+```
+
+> **Note:** port-forwarding is not enough for the Kafka streaming tests. Kafka brokers advertise their in-cluster
+> DNS names, so a client that bootstraps through a forwarded port is then handed broker addresses the host cannot
+> resolve. Either keep using telepresence for those, add an `/etc/hosts` entry mapping the broker DNS name to
+> `127.0.0.1` alongside a per-broker port-forward, or run the suite inside the cluster.
 
 ## Clean up
 To clean up the created resources delete the kind cluster:
