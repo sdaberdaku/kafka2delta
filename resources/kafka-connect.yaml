@@ -10,7 +10,7 @@ spec:
   version: 3.7.1
   replicas: 1
   bootstrapServers: cdc-kafka-bootstrap:9092
-  image: strimzi-debezium-postgres:2.7.0.Final
+  image: strimzi-debezium-postgres:3.0.8.Final
   jvmOptions:
     -Xms: 1024m
     -Xmx: 2048m

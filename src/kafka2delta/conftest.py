@@ -1,3 +1,4 @@
+import os
 import tempfile
 from typing import Generator
 from uuid import uuid4
@@ -12,19 +13,26 @@ from pyspark.sql import SparkSession
 
 from kafka2delta.stream.test.stream_listener import BatchProcessingListener
 
-LOCALSTACK_URL = "http://localstack.localstack.svc.cluster.local:4566"
+# Service endpoints default to the in-cluster DNS names, which resolve when the test host is attached to the
+# cluster network (e.g. with telepresence). Override them to run against port-forwarded services instead.
+LOCALSTACK_URL = os.environ.get("LOCALSTACK_URL", "http://localstack.localstack.svc.cluster.local:4566")
+KAFKA_BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "cdc-kafka-bootstrap.cdc.svc.cluster.local:9092")
+SCHEMA_REGISTRY_URL = os.environ.get("SCHEMA_REGISTRY_URL", "http://schema-registry.cdc.svc.cluster.local:8081")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "postgres-postgresql.postgres.svc.cluster.local")
+POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
+
 LOCALSTACK_ACCESS_KEY_ID = "test"
 LOCALSTACK_SECRET_ACCESS_KEY = "test"
 
 
 @pytest.fixture(scope="session")
 def kafka_bootstrap_server_url() -> str:
-    return "cdc-kafka-bootstrap.cdc.svc.cluster.local:9092"
+    return KAFKA_BOOTSTRAP_SERVERS
 
 
 @pytest.fixture(scope="session")
 def schema_registry_url() -> str:
-    return "http://schema-registry.cdc.svc.cluster.local:8081"
+    return SCHEMA_REGISTRY_URL
 
 
 @pytest.fixture(scope="session")
@@ -120,8 +128,8 @@ def pg_cursor() -> Generator[cursor, None, None]:
         "dbname": "postgres",
         "user": "postgres",
         "password": "postgres",
-        "host": "postgres-postgresql.postgres.svc.cluster.local",
-        "port": "5432"
+        "host": POSTGRES_HOST,
+        "port": POSTGRES_PORT
     }
     conn = psycopg2.connect(**db_config)
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)  # Enable autocommit

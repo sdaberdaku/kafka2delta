@@ -17,8 +17,8 @@ USER root:root
 # Connector plugin debezium-postgres-connector
 ##########
 RUN 'mkdir' '-p' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29' \
-      && 'curl' '-f' '-L' '--output' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip' 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/2.7.0.Final/debezium-connector-postgres-2.7.0.Final-plugin.zip' \
-      && 'echo' '1374d56e14db841c9bd70ed0ec63e282a4db3e5667a70c274b7128a1a5ff72b66332206f393b5da426d9e9390999da3aece1a55b0a865d69c1bcabc5c6115b10 /opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip' > '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip.sha512' \
+      && 'curl' '-f' '-L' '--output' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip' 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.0.8.Final/debezium-connector-postgres-3.0.8.Final-plugin.zip' \
+      && 'echo' '571b18e1f3d8900b1bcc5ceb427e55eb4a8eb88594179588684350ed191d1e29a888c1b3d6488f32658343850501e1c38aa893cc7c99cb2f55caff29a9319f7f /opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip' > '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip.sha512' \
       && 'sha512sum' '--check' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip.sha512' \
       && 'rm' '-f' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip.sha512' \
       && 'unzip' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29.zip' '-d' '/opt/kafka/plugins/debezium-postgres-connector/8cdbed29' \

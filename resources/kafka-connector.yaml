@@ -43,8 +43,6 @@ spec:
     # Adds __deleted: true to the value of the record.
     # Removes TOMBSTONE records.
     transforms.Unwrap.delete.tombstone.handling.mode: rewrite
-    # Whether field names will be sanitized to adhere to Avro naming requirements.
-    transforms.Unwrap.sanitize.field.names: true
     # Adds ts_ms and lsn fields to the simplified Kafka record.
     transforms.Unwrap.add.fields: source.ts_ms,source.lsn
     # Kafka Connect ReplaceField SMT for Confluent Platform
