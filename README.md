@@ -28,7 +28,7 @@ source ~/miniconda3/bin/activate
 conda create --name kafka2delta python=3.10 -y
 conda activate kafka2delta
 pip install -r requirements-dev.txt
-conda install -c conda-forge openjdk=11   # Install Java Development Kit (JDK)
+conda install -c conda-forge openjdk=17   # Install Java Development Kit (JDK)
 ```
 
 ## Installation
