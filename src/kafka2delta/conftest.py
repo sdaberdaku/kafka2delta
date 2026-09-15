@@ -85,11 +85,11 @@ def spark(s3_bucket: str) -> Generator[SparkSession, None, None]:
 
     spark_jars_packages = {
         "com.amazonaws:aws-java-sdk-bundle:1.12.262",
-        "io.delta:delta-spark_2.12:3.2.0",
-        "org.apache.hadoop:hadoop-aws:3.3.4",
-        "org.apache.spark:spark-avro_2.12:3.5.1",
-        "org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.1",
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
+        "io.delta:delta-spark_4.1_2.13:4.4.0",
+        "org.apache.hadoop:hadoop-aws:3.4.2",
+        "org.apache.spark:spark-avro_2.13:4.1.2",
+        "org.apache.spark:spark-streaming-kafka-0-10_2.13:4.1.2",
+        "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.2"
     }
     with tempfile.TemporaryDirectory() as tempdir:
         spark = (
