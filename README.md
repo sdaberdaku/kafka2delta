@@ -32,11 +32,47 @@ conda install -c conda-forge openjdk=17   # Install Java Development Kit (JDK)
 ```
 
 ## Installation
-The package can be installed with the following command:
+The package is published on [PyPI](https://pypi.org/project/kafka2delta/). Pick the extra that matches how you run Spark:
 ```shell
-pip install git+ssh://git@github.com/sdaberdaku/kafka2delta.git#egg=kafka2delta
+pip install "kafka2delta[spark]"    # full PySpark and delta-spark, e.g. local runs and the test suite
+pip install "kafka2delta[connect]"  # thin Spark Connect client (pyspark-client)
+pip install kafka2delta             # neither, for images that already ship Spark
 ```
 
+With Spark Connect, the `foreachBatch` function and the UDFs run on the server, so kafka2delta must also be installed
+in the Spark Connect server image.
+
+## Usage
+```python
+from kafka2delta.config import DeltaTableConfig
+from kafka2delta.stream import stream_to_delta
+
+delta_table_configs = {
+    "postgres.public.users": DeltaTableConfig(
+        schema="cdc",
+        table_name="users",
+        path="s3a://lakehouse/cdc/users",
+    ),
+    # one entry per Kafka topic
+}
+
+query = stream_to_delta(
+    spark=spark,
+    query_name="postgres_cdc",
+    kafka_bootstrap_server_url="kafka:9092",
+    kafka_topics=list(delta_table_configs),
+    delta_table_configs=delta_table_configs,
+    checkpoints_path="s3a://lakehouse/checkpoints/postgres_cdc",
+    schema_registry_url="http://schema-registry:8081",
+    processing_time="30 seconds",
+)
+```
+
+One streaming query reads all the listed topics. Each micro-batch is split by topic and schema version, deduplicated
+to the latest change per primary key (by log sequence number), and merged into the topic's Delta table. Deletes are
+applied with a separate `MERGE`.
+
+## Development
 Locally, the package can be installed with the following command:
 ```shell
 pip install -e .
